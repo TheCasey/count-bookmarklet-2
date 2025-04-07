@@ -365,8 +365,9 @@
       u.includeInReport
     ).length;
     container.innerHTML += `<br><b>Subtractions:</b><br>`;
-    container.innerHTML += `&nbsp;&nbsp;Single word - ${singleCount} <small style="color:blue;cursor:pointer;" onclick='window.__countBookmarkletData.viewSubtractions("Subtractions", "${device}")'>(view)</small><br>`;
-    container.innerHTML += `&nbsp;&nbsp;System Replacements - ${sysCount} <small style="color:blue;cursor:pointer;" onclick='window.__countBookmarkletData.viewSubtractions("System Replacements", "${device}")'>(view)</small><br>`;
+    // Use JSON.stringify(device) to safely inject the device name.
+    container.innerHTML += `&nbsp;&nbsp;Single word - ${singleCount} <small style="color:blue;cursor:pointer;" onclick='window.__countBookmarkletData.viewSubtractions("Subtractions", ${JSON.stringify(device)})'>(view)</small><br>`;
+    container.innerHTML += `&nbsp;&nbsp;System Replacements - ${sysCount} <small style="color:blue;cursor:pointer;" onclick='window.__countBookmarkletData.viewSubtractions("System Replacements", ${JSON.stringify(device)})'>(view)</small><br>`;
   }
 
   function renderDeviceOverviewPanel(data, textInputDevices) {
