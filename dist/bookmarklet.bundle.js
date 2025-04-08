@@ -371,6 +371,9 @@
       (device === "All Devices" || u.device === device) &&
       u.includeInReport
     ).length;
+
+    // Escape single quotes in device names
+    device.replace(/'/g, "\\'");
     
     // Create a container for the Single word subtractions view.
     const singleContainer = document.createElement("div");

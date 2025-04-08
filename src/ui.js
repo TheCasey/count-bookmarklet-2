@@ -134,6 +134,9 @@ function renderCategoryCounts(data, dateData, utterances, textInputDevices, devi
     (device === "All Devices" || u.device === device) &&
     u.includeInReport
   ).length;
+
+  // Escape single quotes in device names
+  const escapedDevice = device.replace(/'/g, "\\'");
   
   // Create a container for the Single word subtractions view.
   const singleContainer = document.createElement("div");
