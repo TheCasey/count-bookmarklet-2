@@ -28,17 +28,22 @@ export function processEntries(startDate, endDate, textInputDevices) {
       const timeStr = items[1].innerText.trim();
       const fullDateStr = dateStr + " " + timeStr;
       const dateObj = new Date(fullDateStr);
-      if (startDate && endDate && (dateObj < startDate || dateObj > endDate)) return;
+      // Convert the raw date to Eastern Time (ET)
+      const etDate = new Date(dateObj.toLocaleString("en-US", { timeZone: "America/New_York" }));
+      // Apply filtering: Only include utterances between startDate and endDate.
+      if (startDate && etDate < startDate) return;
+      if (endDate && etDate > endDate) return;
+      
       const classification = classifyUtterance(device, tElem, textInputDevices);
       const utt = {
         device,
         text: classification.text, // original text (with quotes)
         lowerText: classification.lowerText, // for matching
-        timestamp: dateObj,
+        timestamp: etDate, // now in ET
         category: classification.category, // "Subtractions" or "System Replacements" or null
         includeInReport: true,
       };
-      // For wake word usage, clean the text (remove quotes) for matching.
+      // For wake word usage, remove leading/trailing quotes.
       const normalized = utt.lowerText.replace(/^["']+|["']+$/g, '');
       for (const variant of wakeVariants) {
         if (normalized.startsWith(variant)) {
@@ -64,8 +69,8 @@ export function processEntries(startDate, endDate, textInputDevices) {
           (data[device]["Wake Word Usage"][utt.wakeWord] || 0) + 1;
       }
       dateData[dateStr] = (dateData[dateStr] || 0) + 1;
-      if (!firstValidTime || dateObj < firstValidTime) firstValidTime = dateObj;
-      if (!lastValidTime || dateObj > lastValidTime) lastValidTime = dateObj;
+      if (!firstValidTime || etDate < firstValidTime) firstValidTime = etDate;
+      if (!lastValidTime || etDate > lastValidTime) lastValidTime = etDate;
     }
   });
   dateData.firstValid = firstValidTime

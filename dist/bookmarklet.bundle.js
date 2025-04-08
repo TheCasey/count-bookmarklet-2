@@ -113,16 +113,19 @@
         const timeStr = items[1].innerText.trim();
         const fullDateStr = dateStr + " " + timeStr;
         const dateObj = new Date(fullDateStr);
+        // Convert the raw date to Eastern Time (ET)
+        const etDate = new Date(dateObj.toLocaleString("en-US", { timeZone: "America/New_York" }));
+        
         const classification = classifyUtterance(device, tElem, textInputDevices);
         const utt = {
           device,
           text: classification.text, // original text (with quotes)
           lowerText: classification.lowerText, // for matching
-          timestamp: dateObj,
+          timestamp: etDate, // now in ET
           category: classification.category, // "Subtractions" or "System Replacements" or null
           includeInReport: true,
         };
-        // For wake word usage, clean the text (remove quotes) for matching.
+        // For wake word usage, remove leading/trailing quotes.
         const normalized = utt.lowerText.replace(/^["']+|["']+$/g, '');
         for (const variant of wakeVariants) {
           if (normalized.startsWith(variant)) {
@@ -148,8 +151,8 @@
             (data[device]["Wake Word Usage"][utt.wakeWord] || 0) + 1;
         }
         dateData[dateStr] = (dateData[dateStr] || 0) + 1;
-        if (!firstValidTime || dateObj < firstValidTime) firstValidTime = dateObj;
-        if (!lastValidTime || dateObj > lastValidTime) lastValidTime = dateObj;
+        if (!firstValidTime || etDate < firstValidTime) firstValidTime = etDate;
+        if (!lastValidTime || etDate > lastValidTime) lastValidTime = etDate;
       }
     });
     dateData.firstValid = firstValidTime
@@ -259,7 +262,7 @@
   // Main function to render the UI. This function can be called after auto-scroll completes.
   function renderUI(startDate, endDate, textInputDevices) {
     const { data, dateData, utterances } = processEntries(startDate, endDate, textInputDevices);
-    // Expose data for use in inline view functions.
+    // Expose data for use in viewSubtractions.
     window.__countBookmarkletData = { data, dateData, utterances, textInputDevices, viewSubtractions };
 
     // Clear any existing UI panels.
@@ -293,21 +296,21 @@
     const btnCopy = document.createElement("button");
     btnCopy.textContent = "Copy Full Report";
     btnCopy.style = "width:100%;padding:5px;margin-top:4px;cursor:pointer;";
-    btnCopy.onclick = () => {
+    btnCopy.addEventListener("click", () => {
       const report = copyFullAudit(data, dateData, utterances, textInputDevices);
       navigator.clipboard.writeText(report).then(() => alert("Copied Full Report!"));
-    };
+    });
     container.appendChild(btnCopy);
 
     // Close button.
     const btnClose = document.createElement("button");
     btnClose.textContent = "Close";
     btnClose.style = "width:100%;padding:5px;margin-top:5px;cursor:pointer;";
-    btnClose.onclick = () => {
+    btnClose.addEventListener("click", () => {
       container.remove();
       const devicePanel = document.getElementById("deviceOverviewPanel");
       if (devicePanel) devicePanel.remove();
-    };
+    });
     container.appendChild(btnClose);
     document.body.appendChild(container);
 
@@ -315,9 +318,9 @@
     renderDeviceOverviewPanel(data, textInputDevices);
 
     // Update counts when device filter changes.
-    select.onchange = () => {
+    select.addEventListener("change", () => {
       renderCategoryCounts(data, dateData, utterances, textInputDevices, select.value, categoryDiv);
-    };
+    });
   }
 
   function renderCategoryCounts(data, dateData, utterances, textInputDevices, device, container) {
@@ -353,21 +356,43 @@
     container.innerHTML += wakeHTML;
     
     // Subtractions counts.
-    const singleCount = utterances.filter((u) =>
+    const singleCount = utterances.filter(u =>
       u.category === "Subtractions" &&
       (device === "All Devices" || u.device === device) &&
       !(u.lowerText.includes("tap /") && textInputDevices[u.device]) &&
       u.includeInReport
     ).length;
-    const sysCount = utterances.filter((u) =>
+    const sysCount = utterances.filter(u =>
       u.category === "System Replacements" &&
       (device === "All Devices" || u.device === device) &&
       u.includeInReport
     ).length;
-    container.innerHTML += `<br><b>Subtractions:</b><br>`;
-    // Use JSON.stringify(device) to safely inject the device name.
-    container.innerHTML += `&nbsp;&nbsp;Single word - ${singleCount} <small style="color:blue;cursor:pointer;" onclick='window.__countBookmarkletData.viewSubtractions("Subtractions", ${JSON.stringify(device)})'>(view)</small><br>`;
-    container.innerHTML += `&nbsp;&nbsp;System Replacements - ${sysCount} <small style="color:blue;cursor:pointer;" onclick='window.__countBookmarkletData.viewSubtractions("System Replacements", ${JSON.stringify(device)})'>(view)</small><br>`;
+    
+    // Create a container for the Single word subtractions view.
+    const singleContainer = document.createElement("div");
+    singleContainer.innerHTML = `&nbsp;&nbsp;Single word - ${singleCount} `;
+    const singleViewBtn = document.createElement("small");
+    singleViewBtn.style.color = "blue";
+    singleViewBtn.style.cursor = "pointer";
+    singleViewBtn.textContent = "(view)";
+    singleViewBtn.addEventListener("click", () => {
+      viewSubtractions("Subtractions", device);
+    });
+    singleContainer.appendChild(singleViewBtn);
+    container.appendChild(singleContainer);
+    
+    // Create a container for the System Replacements view.
+    const sysContainer = document.createElement("div");
+    sysContainer.innerHTML = `&nbsp;&nbsp;System Replacements - ${sysCount} `;
+    const sysViewBtn = document.createElement("small");
+    sysViewBtn.style.color = "blue";
+    sysViewBtn.style.cursor = "pointer";
+    sysViewBtn.textContent = "(view)";
+    sysViewBtn.addEventListener("click", () => {
+      viewSubtractions("System Replacements", device);
+    });
+    sysContainer.appendChild(sysViewBtn);
+    container.appendChild(sysContainer);
   }
 
   function renderDeviceOverviewPanel(data, textInputDevices) {
@@ -388,13 +413,13 @@
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = textInputDevices[d] === true;
-      checkbox.onchange = function () {
+      checkbox.addEventListener("change", () => {
         textInputDevices[d] = checkbox.checked;
         // Re-render counts.
         const device = document.getElementById("deviceFilter").value;
         const catDiv = document.getElementById("categoryCounts");
         renderCategoryCounts(data, window.__countBookmarkletData.dateData, window.__countBookmarkletData.utterances, textInputDevices, device, catDiv);
-      };
+      });
       li.appendChild(checkbox);
       const span = document.createElement("span");
       span.textContent = ` ${d}: ${data[d]._utteranceCount || 0}`;
@@ -405,36 +430,39 @@
     const devCopy = document.createElement("button");
     devCopy.textContent = "Copy Devices";
     devCopy.style = "width:100%;padding:5px;margin-top:5px;cursor:pointer;";
-    devCopy.onclick = () => {
+    devCopy.addEventListener("click", () => {
       const txt = copyDevices(data);
       navigator.clipboard.writeText(txt).then(() => alert("Copied Devices!"));
-    };
+    });
     panel.appendChild(devCopy);
     document.body.appendChild(panel);
   }
 
-  // Expose viewSubtractions so inline onclick handlers can call it.
+  // Expose viewSubtractions so external calls can use it.
   function viewSubtractions(category, filterDevice) {
-    const { utterances, textInputDevices } = window.__countBookmarkletData;
+    const { utterances, textInputDevices, data, dateData } = window.__countBookmarkletData;
     let panel = document.createElement("div");
     panel.style =
       "position:fixed;top:100px;left:50px;width:400px;max-height:80%;overflow:auto;padding:10px;background:#fff;z-index:100000;border:2px solid #000;border-radius:5px;";
     panel.innerHTML = `<b>${category} for ${filterDevice}</b><hr>`;
-    let list = utterances.filter(
-      (u) => u.category === category && (filterDevice === "All Devices" || u.device === filterDevice)
+    let list = utterances.filter(u =>
+      u.category === category && (filterDevice === "All Devices" || u.device === filterDevice)
     );
     if (category === "Subtractions") {
-      list = list.filter((u) => !(u.lowerText.includes("tap /") && textInputDevices[u.device]));
+      list = list.filter(u => !(u.lowerText.includes("tap /") && textInputDevices[u.device]));
     }
-    list.forEach((u) => {
+    list.forEach(u => {
       const div = document.createElement("div");
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = u.includeInReport;
-      checkbox.onchange = () => {
+      checkbox.addEventListener("change", () => {
         u.includeInReport = checkbox.checked;
-        renderCategoryCounts();
-      };
+        // Update the main counts.
+        const catDiv = document.getElementById("categoryCounts");
+        const device = document.getElementById("deviceFilter").value;
+        renderCategoryCounts(window.__countBookmarkletData.data, window.__countBookmarkletData.dateData, window.__countBookmarkletData.utterances, window.__countBookmarkletData.textInputDevices, device, catDiv);
+      });
       div.appendChild(checkbox);
       const span = document.createElement("span");
       span.textContent = ` [${u.device}] ${u.text}`;
@@ -444,10 +472,26 @@
     const closeBtn = document.createElement("button");
     closeBtn.textContent = "Close";
     closeBtn.style = "width:100%;padding:5px;margin-top:5px;cursor:pointer;";
-    closeBtn.onclick = () => panel.remove();
+    closeBtn.addEventListener("click", () => panel.remove());
     panel.appendChild(closeBtn);
     document.body.appendChild(panel);
   }
+
+  // =========================
+  // src/index.js
+  // =========================
+  (function () {
+    // For timezone filtering, you can set startDate and endDate in ET.
+    // For example, to count utterances from 8pm ET on a given start day to 6pm ET on a later day,
+    // you can construct Date objects in ET (or convert after constructing).
+    // For now, we'll leave them as null (no filtering).
+    const startDate = null;
+    const endDate = null;
+    const textInputDevices = {}; // Initially empty; devices can be marked via the UI.
+    autoScrollAndLoad(() => {
+      renderUI(startDate, endDate, textInputDevices);
+    });
+  })();
 
   // src/index.js
 
