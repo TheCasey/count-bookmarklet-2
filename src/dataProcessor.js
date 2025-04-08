@@ -28,22 +28,22 @@ export function processEntries(startDate, endDate, textInputDevices) {
       const timeStr = items[1].innerText.trim();
       const fullDateStr = dateStr + " " + timeStr;
       const dateObj = new Date(fullDateStr);
-      // Convert the raw date to Eastern Time (ET)
+      // Convert the raw date into Eastern Time (ET)
       const etDate = new Date(dateObj.toLocaleString("en-US", { timeZone: "America/New_York" }));
-      // Apply filtering: Only include utterances between startDate and endDate.
+      // Filter: Only include utterances that occur at or after startDate and at or before endDate
       if (startDate && etDate < startDate) return;
       if (endDate && etDate > endDate) return;
       
       const classification = classifyUtterance(device, tElem, textInputDevices);
       const utt = {
         device,
-        text: classification.text, // original text (with quotes)
+        text: classification.text,         // original text (with quotes)
         lowerText: classification.lowerText, // for matching
-        timestamp: etDate, // now in ET
-        category: classification.category, // "Subtractions" or "System Replacements" or null
+        timestamp: etDate,                   // now in ET
+        category: classification.category,   // "Subtractions" or "System Replacements" or null
         includeInReport: true,
       };
-      // For wake word usage, remove leading/trailing quotes.
+      // For wake word usage, remove any leading/trailing quotes for matching.
       const normalized = utt.lowerText.replace(/^["']+|["']+$/g, '');
       for (const variant of wakeVariants) {
         if (normalized.startsWith(variant)) {
@@ -73,6 +73,7 @@ export function processEntries(startDate, endDate, textInputDevices) {
       if (!lastValidTime || etDate > lastValidTime) lastValidTime = etDate;
     }
   });
+  // Report first and last valid times in ET
   dateData.firstValid = firstValidTime
     ? firstValidTime.toLocaleString("en-US", { timeZone: "America/New_York" })
     : "N/A";

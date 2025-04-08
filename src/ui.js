@@ -3,7 +3,30 @@ import { processEntries } from "./dataProcessor.js";
 import { autoScrollAndLoad } from "./autoscroll.js";
 import { copyFullAudit, copyDevices } from "./report.js";
 
-// Main function to render the UI. This function can be called after auto-scroll completes.
+// Helper: Read filter date inputs from the page and return startDate and endDate (in ET)
+// It assumes that the page has inputs with IDs "#date-start" and "#date-end".
+// For the start date, we use 8:00 PM ET; for the end date, 6:00 PM ET.
+function getFilterDates() {
+  const s = document.querySelector("#date-start");
+  const e = document.querySelector("#date-end");
+  if (!s || !e) {
+    alert("Could not find filter range on page.");
+    return { startDate: null, endDate: null };
+  }
+  const currentYear = new Date().getFullYear();
+  const startInput = s.value.length < 10 ? s.value + "/" + currentYear : s.value;
+  const endInput = e.value.length < 10 ? e.value + "/" + currentYear : e.value;
+  // Create Date objects with the designated times.
+  const startDate = new Date(
+    new Date(startInput + " 20:00:00").toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+  const endDate = new Date(
+    new Date(endInput + " 18:00:00").toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+  return { startDate, endDate };
+}
+
+// Main function to render the UI. Call this after auto-scroll completes.
 export function renderUI(startDate, endDate, textInputDevices) {
   const { data, dateData, utterances } = processEntries(startDate, endDate, textInputDevices);
   // Expose data for use in viewSubtractions.
@@ -184,7 +207,7 @@ function renderDeviceOverviewPanel(data, textInputDevices) {
 
 // Expose viewSubtractions so external calls can use it.
 export function viewSubtractions(category, filterDevice) {
-  const { utterances, textInputDevices, data, dateData } = window.__countBookmarkletData;
+  const { utterances, textInputDevices } = window.__countBookmarkletData;
   let panel = document.createElement("div");
   panel.style =
     "position:fixed;top:100px;left:50px;width:400px;max-height:80%;overflow:auto;padding:10px;background:#fff;z-index:100000;border:2px solid #000;border-radius:5px;";
@@ -220,20 +243,3 @@ export function viewSubtractions(category, filterDevice) {
   panel.appendChild(closeBtn);
   document.body.appendChild(panel);
 }
-
-// =========================
-// src/index.js
-// =========================
-(function () {
-  const now = new Date();
-  // For timezone filtering, you can set startDate and endDate in ET.
-  // For example, to count utterances from 8pm ET on a given start day to 6pm ET on a later day,
-  // you can construct Date objects in ET (or convert after constructing).
-  // For now, we'll leave them as null (no filtering).
-  const startDate = null;
-  const endDate = null;
-  const textInputDevices = {}; // Initially empty; devices can be marked via the UI.
-  autoScrollAndLoad(() => {
-    renderUI(startDate, endDate, textInputDevices);
-  });
-})();

@@ -113,19 +113,19 @@
         const timeStr = items[1].innerText.trim();
         const fullDateStr = dateStr + " " + timeStr;
         const dateObj = new Date(fullDateStr);
-        // Convert the raw date to Eastern Time (ET)
+        // Convert the raw date into Eastern Time (ET)
         const etDate = new Date(dateObj.toLocaleString("en-US", { timeZone: "America/New_York" }));
         
         const classification = classifyUtterance(device, tElem, textInputDevices);
         const utt = {
           device,
-          text: classification.text, // original text (with quotes)
+          text: classification.text,         // original text (with quotes)
           lowerText: classification.lowerText, // for matching
-          timestamp: etDate, // now in ET
-          category: classification.category, // "Subtractions" or "System Replacements" or null
+          timestamp: etDate,                   // now in ET
+          category: classification.category,   // "Subtractions" or "System Replacements" or null
           includeInReport: true,
         };
-        // For wake word usage, remove leading/trailing quotes.
+        // For wake word usage, remove any leading/trailing quotes for matching.
         const normalized = utt.lowerText.replace(/^["']+|["']+$/g, '');
         for (const variant of wakeVariants) {
           if (normalized.startsWith(variant)) {
@@ -155,6 +155,7 @@
         if (!lastValidTime || etDate > lastValidTime) lastValidTime = etDate;
       }
     });
+    // Report first and last valid times in ET
     dateData.firstValid = firstValidTime
       ? firstValidTime.toLocaleString("en-US", { timeZone: "America/New_York" })
       : "N/A";
@@ -259,7 +260,7 @@
 
   // src/ui.js
 
-  // Main function to render the UI. This function can be called after auto-scroll completes.
+  // Main function to render the UI. Call this after auto-scroll completes.
   function renderUI(startDate, endDate, textInputDevices) {
     const { data, dateData, utterances } = processEntries(startDate, endDate, textInputDevices);
     // Expose data for use in viewSubtractions.
@@ -440,7 +441,7 @@
 
   // Expose viewSubtractions so external calls can use it.
   function viewSubtractions(category, filterDevice) {
-    const { utterances, textInputDevices, data, dateData } = window.__countBookmarkletData;
+    const { utterances, textInputDevices } = window.__countBookmarkletData;
     let panel = document.createElement("div");
     panel.style =
       "position:fixed;top:100px;left:50px;width:400px;max-height:80%;overflow:auto;padding:10px;background:#fff;z-index:100000;border:2px solid #000;border-radius:5px;";
@@ -476,22 +477,6 @@
     panel.appendChild(closeBtn);
     document.body.appendChild(panel);
   }
-
-  // =========================
-  // src/index.js
-  // =========================
-  (function () {
-    // For timezone filtering, you can set startDate and endDate in ET.
-    // For example, to count utterances from 8pm ET on a given start day to 6pm ET on a later day,
-    // you can construct Date objects in ET (or convert after constructing).
-    // For now, we'll leave them as null (no filtering).
-    const startDate = null;
-    const endDate = null;
-    const textInputDevices = {}; // Initially empty; devices can be marked via the UI.
-    autoScrollAndLoad(() => {
-      renderUI(startDate, endDate, textInputDevices);
-    });
-  })();
 
   // src/index.js
 
