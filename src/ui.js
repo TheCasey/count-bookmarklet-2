@@ -146,7 +146,7 @@ function renderCategoryCounts(data, dateData, utterances, textInputDevices, devi
   singleViewBtn.style.cursor = "pointer";
   singleViewBtn.textContent = "(view)";
   singleViewBtn.addEventListener("click", () => {
-    viewSubtractions("Subtractions", device);
+    viewSubtractions("Subtractions", escapedDevice);
   });
   singleContainer.appendChild(singleViewBtn);
   container.appendChild(singleContainer);
@@ -159,7 +159,7 @@ function renderCategoryCounts(data, dateData, utterances, textInputDevices, devi
   sysViewBtn.style.cursor = "pointer";
   sysViewBtn.textContent = "(view)";
   sysViewBtn.addEventListener("click", () => {
-    viewSubtractions("System Replacements", device);
+    viewSubtractions("System Replacements", escapedDevice);
   });
   sysContainer.appendChild(sysViewBtn);
   container.appendChild(sysContainer);
